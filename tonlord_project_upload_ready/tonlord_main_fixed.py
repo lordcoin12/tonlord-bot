@@ -2,13 +2,14 @@ import telebot
 import os
 import time
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import threading
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
 
-next_draw = datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0)
-if datetime.utcnow() > next_draw:
+next_draw = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+if datetime.now(timezone.utc) > next_draw:
     next_draw += timedelta(days=2)
 
 def get_binance_price(symbol):
@@ -28,36 +29,29 @@ def get_price_info():
 @bot.message_handler(commands=["start"])
 def send_welcome(message):
     ton_amt, btc_amt = get_price_info()
-    msg = "🎉 Hoş geldiniz!
-
-"
-    msg += "🎟 Bilet Fiyatı: 1 USDT
-"
+    msg = "🎉 Hoş geldiniz!\n\n"
+    msg += "🎟 Bilet Fiyatı: 1 USDT\n"
     if ton_amt and btc_amt:
-        msg += f"💎 TON ile: {ton_amt:.2f} TON
-"
-        msg += f"₿ BTC ile: {btc_amt:.8f} BTC
-"
-    remaining = next_draw - datetime.utcnow()
-    msg += f"
-🕒 Sonraki çekilişe kalan süre: {str(remaining).split('.')[0]}"
+        msg += f"💎 TON ile: {ton_amt:.2f} TON\n"
+        msg += f"₿ BTC ile: {btc_amt:.8f} BTC\n"
+    remaining = next_draw - datetime.now(timezone.utc)
+    msg += f"\n🕒 Sonraki çekilişe kalan süre: {str(remaining).split('.')[0]}"
     bot.send_message(message.chat.id, msg)
 
 @bot.message_handler(commands=["cekilis"])
 def check_draw_time(message):
-    remaining = next_draw - datetime.utcnow()
+    remaining = next_draw - datetime.now(timezone.utc)
     bot.send_message(message.chat.id, f"🕒 Sonraki çekilişe kalan süre: {str(remaining).split('.')[0]}")
 
 def draw_loop():
     global next_draw
     while True:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if now >= next_draw:
             print("🎉 Çekiliş zamanı!")
             next_draw += timedelta(days=2)
         time.sleep(10)
 
-import threading
 threading.Thread(target=draw_loop, daemon=True).start()
 
 print("🤖 Bot çalışıyor...")
